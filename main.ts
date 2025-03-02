@@ -22,7 +22,9 @@ if (import.meta.main) {
 
 function printHelp(): void {
   console.log(`
-    Image Collage Generator
+    Makes a image collage for all video files in targeted folder and all subfolders. Saves them in a /collage folder as .jpg file.
+
+    Support for .mp4, .mkv, .avi, .mov, .flv, .wmv video formats.
     Usage: deno run --allow-read --allow-write --allow-run main.ts [options]
 
     Options:
@@ -52,7 +54,6 @@ function parseArguments(args: string[]): Args {
 
 //Console commands
 async function main(inputArgs: string[]): Promise<void> {
-  console.log(inputArgs)
   const args = parseArguments(inputArgs);
 
   // If help flag enabled, print help.

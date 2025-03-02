@@ -1,0 +1,5 @@
+# Keep deno.lock
+!deno.lock
+
+# Ignore Deno generated files
+.deno/
