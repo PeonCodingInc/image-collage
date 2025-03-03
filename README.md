@@ -8,7 +8,7 @@ Doesn't process movies shorter then 30 min.
 Go to the root folder and type **deno run** on the main file. The permissionss are required for the code to run. 
 
 ```
-deno run --allow-read --allow-write --allow-run main.ts -d /path/to/videos
+deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos"
 ```
 
 Make sure the path is correct and is either using single slash `C:/Users/Videos` or double backslash `C:\\Users\\Videos`

@@ -25,7 +25,7 @@ function printHelp(): void {
     Makes a image collage for all video files in targeted folder and all subfolders. Saves them in a /collage folder as .jpg file.
 
     Support for .mp4, .mkv, .avi, .mov, .flv, .wmv video formats.
-    Usage: deno run --allow-read --allow-write --allow-run main.ts [options]
+    Usage: deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts [options]
 
     Options:
       -h, --help                Show this help message
@@ -33,7 +33,7 @@ function printHelp(): void {
       --k, --keep               Keep screenshots after creating collage (default: false)
 
     Example:
-      deno run --allow-read --allow-write --allow-run main.ts -d /path/to/videos
+      deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos"
   `);
 }
 
