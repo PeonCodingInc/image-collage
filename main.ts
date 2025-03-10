@@ -59,7 +59,7 @@ function printHelp(): void {
     Note:
       - Requires ffmpeg, ffprobe, and ImageMagick to be installed and available in the PATH
       - For video files over 60 minutes the last 10 minutes are skipped to hopefully avoid spoilers
-      - Any image with "collage" in the name will be ignored
+      - Any .jpg image with "-collage" in the end will be ignored
   `);
 }
 
@@ -138,7 +138,7 @@ async function createImageCollagesFromImages(inputPath: string, tileConfig: stri
   // Filter valid image files
   const imageFiles = directories.filter(file => 
     supportedExtensions.includes(extname(file).toLowerCase()) && 
-    !basename(file).toLowerCase().includes("collage")
+    !basename(file).toLowerCase().includes("-collage.jpg")
   );
 
   if (imageFiles.length === 0) {
