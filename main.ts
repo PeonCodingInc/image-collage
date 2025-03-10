@@ -44,7 +44,7 @@ function printHelp(): void {
       -k,  --keep                Keep screenshots after creating collage (default: false)
       -i,  --images              Directory to scan images for image collage (default: false)
       -c,  --tiles               Tile config (default: 3x2)
-      -l,  --length              Minimum video length in minutes (default: 3)
+      -l,  --length              Minimum video length in minutes (default: 180)
       -o,  --outputPath          Output path for image collages (default: "./collage" contextually to the input file)
     Example:
       Create a collage for video files in a directory:
@@ -60,6 +60,7 @@ function printHelp(): void {
       - Requires ffmpeg, ffprobe, and ImageMagick to be installed and available in the PATH
       - For video files over 60 minutes the last 10 minutes are skipped to hopefully avoid spoilers
       - Any .jpg image with "-collage" in the end will be ignored
+      - Video files under 40 seconds will only have 4 screenshots
   `);
 }
 
@@ -79,7 +80,7 @@ function parseArguments(args: string[]): Args {
     default: { 
        keep: false,
        images: false,
-       length: 3,
+       length: 180, // Default minimum video length
        tileconfig: "3x2" // Default tile configuration 
     }
   }) as Args;
@@ -310,7 +311,7 @@ async function getVideoDuration(videoFile: string): Promise<number> {
 
 async function captureScreenshotsFromFile(videoFile: string, minimumLength: number, tileConfig: string) {
   const [cols, rows] = tileConfig.split('x').map(Number);
-  const screenshotMaxAmount = cols * rows;
+  var screenshotMaxAmount = cols * rows;
   const duration = await getVideoDuration(videoFile);
   const durationMinutes = Math.floor(duration / 60);
   
@@ -323,11 +324,14 @@ async function captureScreenshotsFromFile(videoFile: string, minimumLength: numb
     return;
   }
 
-  if (duration < minimumLength * 60) {
-    console.log(`Skipping ${videoFile}, duration is less than ${minimumLength} minutes.`);
+  if (duration < minimumLength) {
+    console.log(`Skipping ${videoFile}, duration is less than ${minimumLength} seconds.`);
     return;
   }
 
+  if(duration < 40) {
+    screenshotMaxAmount = 4; // Limit to 15 screenshots
+  }
   // For very short videos (less than 5 minutes), use the entire duration
   if (duration <= 300) {
     console.log(`Short video detected, using entire duration`);
