@@ -1,5 +1,5 @@
 import { parseArgs } from "jsr:@std/cli/parse-args";
-import { dirname, join, basename, extname } from "https://deno.land/std@0.119.0/path/mod.ts";
+import { dirname, join, resolve, basename, extname } from "https://deno.land/std@0.119.0/path/mod.ts";
 import { ensureDir } from "https://deno.land/std@0.119.0/fs/mod.ts";
 import * as path from "https://deno.land/std@0.119.0/path/mod.ts";
 
@@ -13,6 +13,16 @@ interface Args {
   d?: string;
   keep?: boolean;
   k?: boolean;
+  images?: boolean;
+  i?: boolean;
+  geometry?: string;
+  g?: string;
+  tileconfig?: string;
+  c?: string;
+  l?: number;
+  length?: number;
+  outputPath?: string;
+  o?: string;
 }
 
 // Call main with command line arguments
@@ -22,18 +32,34 @@ if (import.meta.main) {
 
 function printHelp(): void {
   console.log(`
-    Makes a image collage for all video files in targeted folder and all subfolders. Saves them in a /collage folder as .jpg file.
+    Makes a image collage for all video files OR image files in targeted folder and all subfolders. Saves them in a /collage folder as .jpg file.
 
-    Support for .mp4, .mkv, .avi, .mov, .flv, .wmv video formats.
+    Video format support: .mp4, .mkv, .avi, .mov, .flv, .wmv
+    Image format support: .jpg, .jpeg, .png
     Usage: deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts [options]
 
     Options:
-      -h, --help                Show this help message
-      -d, --directory <path>    Directory to scan for video files
-      --k, --keep               Keep screenshots after creating collage (default: false)
-
+      -h,  --help                Show this help message
+      -d,  --directory <path>    Directory to scan for video files
+      -k,  --keep                Keep screenshots after creating collage (default: false)
+      -i,  --images              Directory to scan images for image collage (default: false)
+      -c,  --tiles               Tile config (default: 3x2)
+      -l,  --length              Minimum video length in minutes (default: 3)
+      -o,  --outputPath          Output path for image collages (default: "./collage" contextually to the input file)
     Example:
+      Create a collage for video files in a directory:
       deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos"
+
+      Creates a collage in "./pictures" for video files over 5 minutes long while removing the screenshots after collage creation:
+      deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos" -l 5 -o ."/pictures"
+      
+      Create a collage for image files while keeping the screenshots after collage creation in a 5x2 layout:
+
+      deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos" -i -k -c "5x2"
+    Note:
+      - Requires ffmpeg, ffprobe, and ImageMagick to be installed and available in the PATH
+      - For video files over 60 minutes the last 10 minutes are skipped to hopefully avoid spoilers
+      - Any image with "collage" in the name will be ignored
   `);
 }
 
@@ -44,13 +70,20 @@ function parseArguments(args: string[]): Args {
     alias: {
       "help": "h",
       "directory": "d",
-      "keep": "k"
+      "keep": "k",
+      "images": "i",
+      "tileconfig": "c",
+      "length": "l",
+      "outputPath": "o"
     },
-    default: { "keep": false }
+    default: { 
+       keep: false,
+       images: false,
+       length: 3,
+       tileconfig: "3x2" // Default tile configuration 
+    }
   }) as Args;
 }
-
-
 
 //Console commands
 async function main(inputArgs: string[]): Promise<void> {
@@ -77,8 +110,15 @@ async function main(inputArgs: string[]): Promise<void> {
       console.error("Error: Input path must be a directory");
       Deno.exit(1);
     }
+    const tileCount = args.tileconfig || "3x2"; // Provide a default value if undefined
+    const outputPath = args.outputPath || "";
+    if(args.images) {
+      await createImageCollagesFromImages(fixedPath, tileCount, outputPath)
+      Deno.exit(1);
+    }
     // Call createImageCollage with the directory path
-    await createImageCollage(fixedPath, args.keep)
+    const videoLength = args.length || 3;
+    await createImageCollage(fixedPath, args.keep, videoLength, tileCount, outputPath)
     .catch((error) => {
       console.error("Error creating image collage:");
       console.error(error);
@@ -91,7 +131,63 @@ async function main(inputArgs: string[]): Promise<void> {
   }
 }
 
-async function createImageCollage(inputPath: string, keep: boolean = false): Promise<void> {
+async function createImageCollagesFromImages(inputPath: string, tileConfig: string, outputPath: string): Promise<void> {
+  const directories = await readDirectory(inputPath);
+  const supportedExtensions = [".jpg", ".jpeg", ".png"];
+
+  // Filter valid image files
+  const imageFiles = directories.filter(file => 
+    supportedExtensions.includes(extname(file).toLowerCase()) && 
+    !basename(file).toLowerCase().includes("collage")
+  );
+
+  if (imageFiles.length === 0) {
+    console.error("No image files found in the directory.");
+    return;
+  }
+
+
+  // Parse tile configuration
+  const [cols, rows] = tileConfig.split('x').map(Number);
+  const imagesPerCollage = cols * rows;
+
+  console.log(`Found ${imageFiles.length} images`);
+  console.log(`Creating collages with ${imagesPerCollage} images each (${tileConfig} layout)`);
+
+  // Split images into groups based on tile count
+  const imageGroups = chunkArray(imageFiles, imagesPerCollage);
+  
+  // Process each group
+  for (let i = 0; i < imageGroups.length; i++) {
+    const group = imageGroups[i];
+    const count = group.length;
+
+    if (count < imagesPerCollage) {
+      console.log(`Last group only has ${count} images. Changing tile config to ${cols}x${Math.ceil(count / cols)}`);
+      tileConfig = `${cols}x${Math.ceil(count / cols)}`;
+    }
+
+    if(outputPath == "") {
+      outputPath = await ensureCollageDirectory(imageGroups[i][0]);
+    }
+    try {
+      await ensureDir(outputPath);
+    } catch (error) {
+      console.error("Error: Invalid output path");
+      console.error(error);
+      return;
+    }
+
+    const outputFile = join(outputPath, `${(i + 1).toString().padStart(3, '0')}-collage.jpg`);
+    
+    console.log(`\nCreating collage ${i + 1} with ${count} images using ${tileConfig} layout`);
+    group.forEach(f => console.log(`  ${basename(f)}`));
+    
+    await createMontage(outputFile, group, tileConfig);
+  }
+}
+
+async function createImageCollage(inputPath: string, keep: boolean = false, minLength: number, tileConfig: string, outputPath: string): Promise<void> {
   console.log("Reading directory...");
   const directories: string[] = await readDirectory(inputPath);
   const supportedExtensions = [".mp4", ".mkv", ".avi", ".mov", ".flv", ".wmv"];
@@ -104,9 +200,15 @@ async function createImageCollage(inputPath: string, keep: boolean = false): Pro
 
   // Process each video sequentially
   const mediaFiles = directories.filter(file => supportedExtensions.includes(extname(file).toLowerCase()));
+
+  if (mediaFiles.length === 0) {
+    console.error("No video files found in the directory.");
+    return;
+  }
+
   for (const file of mediaFiles) {
     console.log(`Processing ${file}...`);
-    await captureScreenshotsFromFile(file, 8);
+    await captureScreenshotsFromFile(file, minLength, tileConfig);
   }
 
   console.log("Fetching all screenshots...");
@@ -120,28 +222,45 @@ async function createImageCollage(inputPath: string, keep: boolean = false): Pro
 
   // Process each movie's screenshots separately
   for (const [movieName, movieScreenshots] of Object.entries(movieGroups)) {
-    if (movieScreenshots.length < 6) {
-      console.log(`Skipping ${movieName}: Not enough screenshots (${movieScreenshots.length})`);
-      continue;
-    }
-
     // Sort screenshots by timestamp to ensure correct order
     movieScreenshots.sort((a, b) => {
-      const timeA = parseInt(a.match(/\d+(?=min\.jpg)/)?.[0] || "0");
-      const timeB = parseInt(b.match(/\d+(?=min\.jpg)/)?.[0] || "0");
-      return timeA - timeB;
+      const seqA = parseInt(a.match(/screenshot-(\d+)/)?.[1] || "0");
+      const seqB = parseInt(b.match(/screenshot-(\d+)/)?.[1] || "0");
+      return seqA - seqB;
     });
 
-    const chunks = chunkArray(movieScreenshots, 6);
-    for (const chunk of chunks) {
-      if (chunk.length === 6) { // Only create montage if we have exactly 6 screenshots
-        const collageDir = await ensureCollageDirectory(chunk[0]);
-        const outputFile = join(collageDir, `${movieName}-collage.jpg`);
-        console.log(`Creating collage for ${movieName}`);
-        await createMontage(outputFile, chunk);
-        createdCollages.push(outputFile);
-      }
+    // Calculate optimal tile configuration based on number of screenshots
+    let actualTileConfig: string;
+    const count = movieScreenshots.length;
+    
+    if (count <= 4) {
+      actualTileConfig = "2x2";
+    } else if (count <= 6) {
+      actualTileConfig = "3x2";
+    } else if (count <= 9) {
+      actualTileConfig = "3x3";
+    } else if (count <= 12) {
+      actualTileConfig = "4x3";
+    } else if (count <= 15) {
+      actualTileConfig = "5x3";
+    } else {
+      actualTileConfig = tileConfig;
     }
+    if(outputPath == "") {
+      outputPath = await ensureCollageDirectory(movieScreenshots[0]);
+    }
+    try {
+      await ensureDir(outputPath);
+    } catch (error) {
+      console.error("Error: Invalid output path");
+      console.error(error);
+      return;
+    }
+
+    const outputFile = join(outputPath, `${movieName}-collage.jpg`);
+    console.log(`Creating collage for ${movieName} with ${count} screenshots using ${actualTileConfig} layout`);
+    await createMontage(outputFile, movieScreenshots, actualTileConfig);
+    createdCollages.push(outputFile);
   }
 
   if (!keep) {
@@ -151,7 +270,6 @@ async function createImageCollage(inputPath: string, keep: boolean = false): Pro
   }
   console.log("All tasks completed!");
 }
-
 
 async function readDirectory(path: string): Promise<string[]> {
   const entries: string[] = [];
@@ -189,44 +307,133 @@ async function getVideoDuration(videoFile: string): Promise<number> {
   return isNaN(duration) ? 0 : duration;
 }
 
-async function captureScreenshotsFromFile(videoFile: string, intervalMinutes: number) {
-  const screenshotMaxAmount = 6;
-  const maxRetries = 3;
-
+async function captureScreenshotsFromFile(videoFile: string, minimumLength: number, tileConfig: string = "3x2") {
+  const [cols, rows] = tileConfig.split('x').map(Number);
+  const screenshotMaxAmount = cols * rows;
   const duration = await getVideoDuration(videoFile);
-  if (duration < 30 * 60) {
-    console.log(`Skipping ${videoFile}, duration is less than 30 minutes.`);
+  const durationMinutes = Math.floor(duration / 60);
+  
+  console.log(`Video: ${basename(videoFile)}`);
+  console.log(`Duration: ${durationMinutes} minutes (${Math.floor(duration)} seconds)`);
+  console.log(`Target screenshots: ${screenshotMaxAmount} (${cols}x${rows})`);
+  
+  if (duration == null) {
+    console.log(`Skipping ${videoFile}, couldn't get duration.`);
     return;
   }
 
+  if (duration < minimumLength * 60) {
+    console.log(`Skipping ${videoFile}, duration is less than ${minimumLength} minutes.`);
+    return;
+  }
+
+  // For very short videos (less than 5 minutes), use the entire duration
+  if (duration <= 300) {
+    console.log(`Short video detected, using entire duration`);
+    // Leave 5 seconds at start and end
+    const usableDuration = duration - 10;
+    const interval = usableDuration / (screenshotMaxAmount + 1);
+    await captureScreenshots(videoFile, interval, screenshotMaxAmount, 5);
+    return;
+  }
+
+  // For longer videos, use the previous logic
+  if (duration < 60 * 60) {
+    const interval = duration / (screenshotMaxAmount + 1);
+    await captureScreenshots(videoFile, interval, screenshotMaxAmount, 30); // Start 30s in
+    return;
+  }
+
+  // For very long videos, use the original logic
+  const startTime = 120;
+  const endTime = Math.max(duration - 600, startTime);
+  const usableDuration = endTime - startTime;
+  const interval = usableDuration / (screenshotMaxAmount + 1);
+
+  await captureScreenshots(videoFile, interval, screenshotMaxAmount, startTime);
+}
+
+async function captureScreenshots(videoFile: string, interval: number, screenshotMaxAmount: number, startTime: number) {
+  const maxRetries = 3;
+  const createdFiles: string[] = [];
   for (let i = 1; i <= screenshotMaxAmount; i++) {
-    const time = new Date(i * intervalMinutes * 60 * 1000).toISOString().substr(11, 8);
+    const timestamp = startTime + (interval * i);
+    const hours = Math.floor(timestamp / 3600);
+    const minutes = Math.floor((timestamp % 3600) / 60);
+    const seconds = Math.floor(timestamp % 60);
+    const time = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    console.log(`Taking screenshot at ${time}`);
     const dirName = dirname(videoFile);
     const fileNameWithoutExt = basename(videoFile, extname(videoFile));
-    const outputFile = join(dirName, `${fileNameWithoutExt}-screenshot-${i * intervalMinutes}min.jpg`);
-
+    // Changed filename format to use sequential numbers instead of minutes
+    const outputFile = join(dirName, `${fileNameWithoutExt}-screenshot-${i.toString().padStart(3, '0')}.jpg`);
+    
     let attempt = 0;
     let success = false;
-
     while (attempt < maxRetries && !success) {
       attempt++;
+      try {
+        const command = new Deno.Command("ffmpeg", {
+          args: [
+            "-y",
+            "-ss", time,
+            "-i", videoFile,
+            "-vframes", "1",
+            "-q:v", "2", // Increased quality
+            "-an", // No audio
+            "-sn", // No subtitles
+            "-update", "1", // Overwrite
+            outputFile
+          ],
+          stdout: "piped",
+          stderr: "piped"
+        });
 
-      const command = new Deno.Command("ffmpeg", {
-        args: ["-y", "-ss", time, "-i", videoFile, "-vframes", "1", "-q:v", "6", outputFile],
-        stdout: "null",
-        stderr: "null"
-      });
-
-      const { code } = await command.output();
-      if (code === 0) {
-        success = true;
-      } else {
-        console.error(`Retry ${attempt}: Failed screenshot at ${time} for ${videoFile}`);
+        const { code, stderr } = await command.output();
+        const error = new TextDecoder().decode(stderr);
+        
+        if (code === 0) {
+          // Verify file exists and has size > 0
+          try {
+            const fileInfo = await Deno.stat(outputFile);
+            if (fileInfo.size > 0) {
+              success = true;
+              createdFiles.push(outputFile);
+              console.log(`Successfully created screenshot ${i}/${screenshotMaxAmount}`);
+            } else {
+              console.error(`Screenshot file is empty: ${outputFile}`);
+            }
+          } catch (e) {
+            if (e instanceof Error) {
+              console.error(`Failed to verify screenshot file: ${e.message}`);
+            } else {
+              console.error(`Failed to verify screenshot file: ${e}`);
+            }
+          }
+        } else {
+          console.error(`FFmpeg error (attempt ${attempt}): ${error}`);
+        }
+      } catch (e) {
+        if (e instanceof Error) {
+        console.error(`System error (attempt ${attempt}): ${e.message}`);
+        } else {
+          console.error(`System error (attempt ${attempt}): ${e}`);
+        }
       }
     }
+    
+    if (!success) {
+      console.error(`Failed to create screenshot at ${time} after ${maxRetries} attempts`);
+    }
   }
-  console.log(`Captured screenshot for ${videoFile}`);
+
+  console.log(`Captured ${createdFiles.length}/${screenshotMaxAmount} screenshots for ${basename(videoFile)}`);
+  if (createdFiles.length !== screenshotMaxAmount) {
+    console.error(`Warning: Some screenshots were not created successfully`);
+  }
 }
+
 
 async function ensureCollageDirectory(inputPath: string): Promise<string> {
   const collageDir = join(dirname(inputPath), "collages");
@@ -234,20 +441,17 @@ async function ensureCollageDirectory(inputPath: string): Promise<string> {
   return collageDir;
 }
 
-async function createMontage(outputFile: string, inputFiles: string[]) {
-  if (inputFiles.length !== 6) {
-    console.error("Exactly 6 input files are required to create the montage.");
-    return;
-  }
-
+async function createMontage(outputFile: string, inputFiles: string[], tileConfig: string = "3x2") {
   const outputDir = dirname(outputFile);
   await ensureDir(outputDir);
+
+  console.log(`Creating montage with ${inputFiles.length} files`); // Debug line
 
   const command = new Deno.Command("magick", {
     args: [
       "montage",
       ...inputFiles,
-      "-tile", "3x2",
+      "-tile", tileConfig,
       "-geometry", "1920x1080+0+0", 
       "-background", "black",
       "-gravity", "center",
