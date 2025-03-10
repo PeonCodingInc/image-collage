@@ -40,3 +40,10 @@ This tool requires the following software to be installed:
 
 Double check if ffmpeg imagemagick and deno can be run in the terminal.
 
+## Contact
+For any business inquiries or feedback: <peoncoding@gmail.com> <br>
+
+## Donations
+<a href="https://ko-fi.com/codingpeon" target="_blank">
+  <img src="images/kofi.png" alt="Kofi" style="width:100px;">
+</a>
