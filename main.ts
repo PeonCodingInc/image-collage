@@ -44,7 +44,7 @@ function printHelp(): void {
       -k,  --keep                Keep screenshots after creating collage (default: false)
       -i,  --images              Directory to scan images for image collage (default: false)
       -c,  --tiles               Tile config (default: 3x2)
-      -l,  --length              Minimum video length in minutes (default: 180)
+      -l,  --length              Minimum video length in seconds (default: 180)
       -o,  --outputPath          Output path for image collages (default: "./collage" contextually to the input file)
     Example:
       Create a collage for video files in a directory:
