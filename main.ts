@@ -177,8 +177,8 @@ async function createImageCollagesFromImages(inputPath: string, tileConfig: stri
       console.error(error);
       return;
     }
-
-    const outputFile = join(outputPath, `${(i + 1).toString().padStart(3, '0')}-collage.jpg`);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const outputFile = join(outputPath, `${timestamp}-collage.jpg`);
     
     console.log(`\nCreating collage ${i + 1} with ${count} images using ${tileConfig} layout`);
     group.forEach(f => console.log(`  ${basename(f)}`));
