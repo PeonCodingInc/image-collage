@@ -138,7 +138,7 @@ async function createImageCollagesFromImages(inputPath: string, tileConfig: stri
   // Filter valid image files
   const imageFiles = directories.filter(file => 
     supportedExtensions.includes(extname(file).toLowerCase()) && 
-    !basename(file).toLowerCase().includes("-collage.jpg")
+    !basename(file).toLowerCase().includes("-videocollage.jpg")
   );
 
   if (imageFiles.length === 0) {
@@ -178,7 +178,7 @@ async function createImageCollagesFromImages(inputPath: string, tileConfig: stri
       return;
     }
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const outputFile = join(outputPath, `${timestamp}-collage.jpg`);
+    const outputFile = join(outputPath, `${timestamp}-imagecollage.jpg`);
     
     console.log(`\nCreating collage ${i + 1} with ${count} images using ${tileConfig} layout`);
     group.forEach(f => console.log(`  ${basename(f)}`));
@@ -214,9 +214,10 @@ async function createImageCollage(inputPath: string, keep: boolean = false, minL
   console.log("Fetching all screenshots...");
   const screenshots: string[] = await readDirectory(inputPath);
   const imageFiles = screenshots.filter(file => 
-    extname(file).toLowerCase() === ".jpg" && !file.includes("-collage.jpg")
+    extname(file).toLowerCase() === ".jpg" && 
+    !file.includes("-imagecollage") &&
+    file.includes("-screenshot-")
   );
-
   // Group screenshots by movie
   const movieGroups = groupScreenshotsByMovie(imageFiles);
 
@@ -257,7 +258,7 @@ async function createImageCollage(inputPath: string, keep: boolean = false, minL
       return;
     }
 
-    const outputFile = join(outputPath, `${movieName}-collage.jpg`);
+    const outputFile = join(outputPath, `${movieName}-videocollage.jpg`);
     console.log(`Creating collage for ${movieName} with ${count} screenshots using ${actualTileConfig} layout`);
     await createMontage(outputFile, movieScreenshots, actualTileConfig);
     createdCollages.push(outputFile);
@@ -307,7 +308,7 @@ async function getVideoDuration(videoFile: string): Promise<number> {
   return isNaN(duration) ? 0 : duration;
 }
 
-async function captureScreenshotsFromFile(videoFile: string, minimumLength: number, tileConfig: string = "3x2") {
+async function captureScreenshotsFromFile(videoFile: string, minimumLength: number, tileConfig: string) {
   const [cols, rows] = tileConfig.split('x').map(Number);
   const screenshotMaxAmount = cols * rows;
   const duration = await getVideoDuration(videoFile);
