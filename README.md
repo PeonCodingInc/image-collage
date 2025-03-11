@@ -20,12 +20,12 @@ docker build -t imagecollage-app .
 That will build an image from the dockerfile which can be used to create an container. <br>
 #### Example video: Make collages of videos that are over 6 minutes long from F:/videos and subfolders in the folder that the command was executed in with 4x3 layout
 ```
-./run_app.sh "F:/videos" "./collages" -c "4x3"      -l 360
+./run_app.sh "F:/videos" "./collages" -c "4x3" -l 360
 ```
 
 #### Example image: Creates a collage in "F:/pictures/" for pictures in "F:/pictures/collages" with 10x5 layout:
 ```
-./run_app.sh "F:/pictures/" "F:/pictures/collages"  -i -c "10x5"
+./run_app.sh "F:/pictures/" "F:/pictures/collages" -i -c "10x5"
 ```
 Make sure the path is correct and is either using single slash `F:/Videos` or double backslash `F:\\Videos`
 
