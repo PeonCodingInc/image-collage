@@ -18,6 +18,7 @@ Go to the root folder and type
 docker build -t imagecollage-app .
 ```
 That will build an image from the dockerfile which can be used to create an container. <br>
+The following commands assuming you are using mingw, if you are using powershell there is also a **.ps1** version
 #### Example video: Make collages of videos that are over 6 minutes long from F:/videos and subfolders in the folder that the command was executed in with 4x3 layout
 ```
 ./run_app.sh "F:/videos" "./collages" -c "4x3" -l 360
