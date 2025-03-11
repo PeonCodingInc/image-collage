@@ -408,7 +408,6 @@ async function captureScreenshots(videoFile: string, interval: number, screensho
             if (fileInfo.size > 0) {
               success = true;
               createdFiles.push(outputFile);
-              console.log(`Successfully created screenshot ${i}/${screenshotMaxAmount}`);
             } else {
               console.error(`Screenshot file is empty: ${outputFile}`);
             }

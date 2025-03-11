@@ -51,6 +51,6 @@ echo "Output Directory: $OUTPUT_DIR"
 
 # Run the container
 docker run --rm \
-    -v $1:/app/input \
-    -v $OUTPUT_DIR:/app/output \
+    -v "$1":/app/input \
+    -v "$2":/app/output \
     imagecollage-app -d "/app/input" -o "/app/output" $EXTRA_FLAGS
