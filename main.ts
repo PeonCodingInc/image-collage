@@ -455,14 +455,16 @@ async function createMontage(outputFile: string, inputFiles: string[], tileConfi
   await ensureDir(outputDir);
 
   console.log(`Creating montage with ${inputFiles.length} files`); // Debug line
-
+  // Adjust the geometry to reduce spacing and ensure appropriate image size
+  const [cols, rows] = tileConfig.split('x').map(Number);
+  const geometry = `${Math.floor(1920 / cols)}x${Math.floor(1080 / rows)}+0+0`; // Adjust this value as needed
   const command = new Deno.Command("nice", {
     args: [
       "-n", "15",
       "magick-montage",
       ...inputFiles,
       "-tile", tileConfig,
-      "-geometry", "1920x1080+0+0",
+      "-geometry", geometry,
       "-background", "black",
       "-gravity", "center",
       outputFile,
