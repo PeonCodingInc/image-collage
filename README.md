@@ -41,7 +41,6 @@ For more specific details on run following command in terminal
 ## Contact
 For any business inquiries or feedback: <peoncoding@gmail.com> <br>
 
-## Donations
 <a href="https://ko-fi.com/codingpeon" target="_blank">
-  <img src="images/kofi.png" alt="Kofi" style="width:100px;">
+  <img src="images/kofi.png" alt="Kofi" style="width:80px;">
 </a>
