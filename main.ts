@@ -139,7 +139,8 @@ async function createImageCollagesFromImages(inputPath: string, tileConfig: stri
   // Filter valid image files
   const imageFiles = directories.filter(file => 
     supportedExtensions.includes(extname(file).toLowerCase()) && 
-    !basename(file).toLowerCase().includes("-videocollage")
+    !basename(file).toLowerCase().includes("-videocollage") &&    
+    !basename(file).toLowerCase().includes("-imagecollage")
   );
 
   if (imageFiles.length === 0) {
