@@ -1,44 +1,42 @@
 # Description
-Makes a image collage for all video files OR image files in targeted folder and all subfolders. Saves them in a /collage folder as .jpg file.
+Makes a image collage for all video files OR image files in targeted folder and all subfolders. Saves them in targeted folder as .jpg file.
 
-Video format support: **.mp4, .mkv, .avi, .mov, .flv, .wmv**<br>
-Image format support: **.jpg, .jpeg, .png**
+Video format support: .mp4, .mkv, .avi, .mov, .flv, .wmv <br>
+Image format support: .jpg, .jpeg, .png <br>
+Usage: ./run_app.sh [options] <br>
 
 ![Hero Collage](images/hero-collage.jpg)
 *Image credit: Blender Foundation*
 
 ### Usage
-Go to the root folder and type **deno run** on the main file. The permissionss are required for the code to run. 
+
+[Docker](https://www.docker.com/) is required, tested with version 26.1.1 <br>
+
+Go to the root folder and type 
 
 ```
-deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos"
+docker build -t imagecollage-app .
+```
+That will build an image from the dockerfile which can be used to create an container. <br>
+#### Example video: Make collages of videos that are over 6 minutes long from F:/videos and subfolders in the folder that the command was executed in with 4x3 layout
+```
+./run_app.sh "F:/videos" "./collages" -c "4x3"      -l 360
 ```
 
-Make sure the path is correct and is either using single slash `C:/Users/Videos` or double backslash `C:\\Users\\Videos`
-
-Example usage when in root folder:     
-#### Create a collage for video files in a directory:
-    deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos"
-
-##### Creates a collage in "./pictures" for video files over 5 minutes long while removing the screenshots after collage creation:
-    deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos" -l 5 -o ."/pictures"
-      
-##### Create a collage for image files while keeping the screenshots after collage creation in a 5x2 layout:
-    deno run --allow-read --allow-write --allow-run=ffmpeg,ffprobe,magick main.ts -d "/path/to/videos" -i -k -c "5x2"
+#### Example image: Creates a collage in "F:/pictures/" for pictures in "F:/pictures/collages" with 10x5 layout:
+```
+./run_app.sh "F:/pictures/" "F:/pictures/collages"  -i -c "10x5"
+```
+Make sure the path is correct and is either using single slash `F:/Videos` or double backslash `F:\\Videos`
 
 For more specific details on run following command in terminal
 ```
-deno main.ts --help
+./run_app.sh --help
 ```
-## Prerequisites
-
-This tool requires the following software to be installed:
-
-- [FFmpeg](https://ffmpeg.org/) - A complete cross-platform solution for video handling
-- [ImageMagick](https://imagemagick.org/) - Software suite for displaying, converting, and editing image files
+## 
+- [FFmpeg](https://ffmpeg.org/) - A complete cross-platform solution for video handling. Used for taking screenshots of video files and also dynamically changing the interval based on video length.
+- [ImageMagick](https://imagemagick.org/) - Software suite for displaying, converting, and editing image files. Used for creating the collage.
 - [Deno](https://docs.deno.com/runtime/getting_started/installation/) - Javascript runtime
-
-Double check if ffmpeg imagemagick and deno can be run in the terminal.
 
 ## Contact
 For any business inquiries or feedback: <peoncoding@gmail.com> <br>
