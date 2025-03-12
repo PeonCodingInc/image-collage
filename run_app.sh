@@ -10,10 +10,11 @@ if [ "$#" -lt 2 ]; then
     exit 1
 fi
 
-EXTRA_FLAGS="${@:3}"  # Capture additional flags
+# Capture additional flags
+EXTRA_FLAGS="${@:3}"
 
-# Check for help flag or no extra flags
-if [[ "$EXTRA_FLAGS" == *"-h"* ]] || [[ "$EXTRA_FLAGS" == *"--help"* ]] || [[ -z "$EXTRA_FLAGS" ]]; then
+# Check for help flag
+if [[ "$EXTRA_FLAGS" == *"-h"* ]] || [[ "$EXTRA_FLAGS" == *"--help"* ]]; then
     docker run --rm imagecollage-app --help
     exit 0
 fi
@@ -51,6 +52,6 @@ echo "Output Directory: $OUTPUT_DIR"
 
 # Run the container
 docker run --rm \
-    -v "$1":/app/input \
-    -v "$2":/app/output \
+    -v "$INPUT_DIR":/app/input \
+    -v "$OUTPUT_DIR":/app/output \
     imagecollage-app -d "/app/input" -o "/app/output" $EXTRA_FLAGS

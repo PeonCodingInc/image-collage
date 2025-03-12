@@ -9,8 +9,8 @@ $InputDir = $args[0]
 $OutputDir = $args[1]
 $ExtraFlags = $args[2..($args.Count-1)]
 
-# Check for help flag or no extra flags
-if ($ExtraFlags -match "-h|--help" -or $ExtraFlags.Count -eq 0) {
+# Check for help flag
+if ($ExtraFlags -match "-h|--help") {
     docker run --rm imagecollage-app --help
     exit 0
 }
